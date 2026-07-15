@@ -1,0 +1,9 @@
+# DH PGC140 numbers measured during the A2 stroke test
+# (a2_gripper.py --stroke-test, calipers in hand).
+# Consumed later by the C2 grasp width check and C3 safety gate:
+# a box is only graspable if its short side < max_jaw_stroke_m.
+# null = not measured yet.
+max_jaw_stroke_m: null      # jaw-to-jaw opening at 100% minus gap at 0%
+closed_gap_m: null          # jaw-to-jaw gap at 0% (0 if the pads touch)
+finger_pad_width_m: null
+finger_pad_length_m: null
