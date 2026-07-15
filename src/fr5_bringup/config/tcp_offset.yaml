@@ -1,7 +1,10 @@
 # Fingertip-center TCP offset in the wrist3_link (flange) frame, metres.
-# PLACEHOLDER: rough guess from the PGC140 URDF (finger carriage at z=0.093
-# plus finger length). Solve the real value with a2_tcp_calibrate.py --write,
-# then rebuild (colcon build --symlink-install) and relaunch bringup.
-x: 0.0
-y: 0.0
-z: 0.150
+# Solved by a2_tcp_calibrate.py (pivot calibration), 2026-07-15.
+# Kept: the 4-touch run (RMS residual 2.8 mm). A later 6-touch run gave
+# z=0.2644 with RMS 7.3 mm (sloppy touches — arm hard to jog) and was
+# discarded. The two runs disagree by ~3 cm in z, so run
+# `a2_tcp_calibrate.py --verify` when convenient to confirm this one.
+# After editing: relaunch bringup (config is symlinked; no rebuild needed).
+x: 0.0025
+y: -0.0034
+z: 0.2323

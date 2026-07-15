@@ -145,12 +145,38 @@ def run_calibrate(node, args):
     if rotations is None:
         return 1
 
+    # Degeneracy guard 1: the FLANGE must physically travel between touches.
+    # If the fingertip stays on the point while the wrist tilts, the flange
+    # swings by several cm; near-zero spread means the arm never really moved
+    # (or only spun in place) and the fit would be garbage with a perfect-
+    # looking residual.
+    pts = np.array(positions)
+    span = max(np.linalg.norm(pts[i] - pts[j])
+               for i in range(len(pts)) for j in range(i + 1, len(pts)))
+    if span < 0.03:
+        print(f'\nERROR: the wrist moved only {span * 1000:.1f} mm across all '
+              'touches — the poses are effectively identical, so the offset '
+              'cannot be solved.\nTilt the whole arm between touches: the '
+              'fingertip stays on the point, but the wrist should land '
+              '5-10 cm away from its previous spot each time. Nothing written.')
+        return 1
+
     diversity = rotation_diversity_deg(rotations)
     if diversity < 20.0:
         print(f'\nWARNING: wrist orientations only span {diversity:.0f} deg — '
               'the fit is near-degenerate. Redo with more varied orientations.')
 
     d, c, residuals = solve_pivot(rotations, positions)
+
+    # Degeneracy guard 2: the fingertip is physically IN FRONT of the flange
+    # (a closed PGC140 puts it very roughly 10-20 cm out along flange +z).
+    # An implausible z means degenerate touches, not a real measurement.
+    if not (0.03 < d[2] < 0.35):
+        print(f'\nERROR: solved z offset {d[2] * 1000:+.1f} mm is physically '
+              'implausible (expected roughly +100..+200 mm in front of the '
+              'flange). The touch set is degenerate — redo with clearly '
+              'different wrist tilts. Nothing written.')
+        return 1
     print('\n=== pivot calibration result ===')
     print(f'TCP offset d (flange frame, m): '
           f'[{d[0]:+.4f} {d[1]:+.4f} {d[2]:+.4f}]  |d| = {np.linalg.norm(d):.4f}')
