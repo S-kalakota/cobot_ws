@@ -1,0 +1,57 @@
+# A3 workspace safety configuration.
+#
+# This file is intentionally DISABLED until the rig has been measured and the
+# values have been reviewed in RViz.  Run a3_measure_workspace.py to generate
+# measured values.  The A3 nodes never command motion: the scene node only adds
+# collision geometry and the watchdog only cancels ROS action goals.
+schema_version: 1
+frame_id: base_link
+tcp_frame: tcp_link
+
+metadata:
+  measured_at: null
+  measured_by: null
+  tcp_calibrated: false
+  notes: "Placeholder only; do not enable until measurements are reviewed."
+
+measurements:
+  table_surface_points: []
+  table_plane_z: null
+  keep_in_samples: []
+
+planning_scene:
+  enabled: false
+  boxes:
+    - id: table
+      enabled: false
+      center: [null, null, null]
+      size: [null, null, null]
+      color: [0.45, 0.45, 0.45, 1.0]
+    - id: camera_gantry
+      enabled: false
+      center: [null, null, null]
+      size: [null, null, null]
+      color: [0.95, 0.55, 0.10, 1.0]
+    - id: monitor
+      enabled: false
+      center: [null, null, null]
+      size: [null, null, null]
+      color: [0.85, 0.20, 0.20, 1.0]
+
+keep_in:
+  enabled: false
+  min: [null, null, null]
+  max: [null, null, null]
+
+watchdog:
+  enabled: false
+  rate_hz: 20.0
+  startup_grace_s: 5.0
+  tf_stale_timeout_s: 0.5
+  floor_clearance_m: 0.005
+  boundary_tolerance_m: 0.0
+  cancel_repeat_s: 0.10
+  cancel_services:
+    - /move_action/_action/cancel_goal
+    - /execute_trajectory/_action/cancel_goal
+    - /fairino5_controller/follow_joint_trajectory/_action/cancel_goal

@@ -118,9 +118,37 @@ offset from `config/tcp_offset.yaml`). Milestone B scripts should read
 `tcp_link`, not `wrist3_link`. Jaw stroke / pad sizes measured in the stroke
 test go in `config/gripper.yaml` for the C2/C3 width checks.
 
+## A3: workspace safety
+
+A3 adds MoveIt keep-out boxes and a latched TCP keep-in watchdog. The checked-in
+`config/workspace.yaml` is intentionally disabled until the rig is measured and
+the boxes are reviewed in RViz. All three tools are non-driving: the measurement
+tool only reads TF, the scene node only publishes collision geometry, and the
+watchdog only cancels existing ROS action goals.
+
+```bash
+# Interactive measurement; you jog with the pendant and press Enter.
+# This writes measured values but leaves both safety layers disabled.
+ros2 run fr5_bringup a3_measure_workspace.py
+
+# Offline validation; neither command starts ROS motion or the robot driver.
+ros2 run fr5_bringup a3_planning_scene.py --validate-only
+ros2 run fr5_bringup a3_tcp_watchdog.py --validate-only
+
+# After a watchdog breach, inspect the cause and explicitly acknowledge it:
+ros2 service call /a3_tcp_watchdog/status std_srvs/srv/Trigger '{}'
+ros2 service call /a3_tcp_watchdog/acknowledge std_srvs/srv/Trigger '{}'
+```
+
+Enable `planning_scene.enabled` only after checking every box in simulation.
+Enable `keep_in.enabled` and `watchdog.enabled` only after A2 TCP verification
+passes and the simulated cancellation/acknowledgement test succeeds. The
+watchdog is not safety-rated and does not replace the physical e-stop.
+
 ## Known gaps (by design, later tasks)
 
 - `tcp_offset.yaml` holds a placeholder (z=0.150) until the calibration above
   has been run on the real arm.
-- No table/gantry collision objects in the planning scene yet (Task A3/C4) —
-  MoveIt only self-collision-checks; keep speed at 0.1 and watch the arm.
+- A3 code is installed, but its checked-in workspace is disabled pending real
+  measurements and simulation validation. Until then MoveIt only
+  self-collision-checks; keep speed at 0.1 and watch the arm.

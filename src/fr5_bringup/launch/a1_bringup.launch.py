@@ -1,8 +1,10 @@
 """FR5 driver + MoveIt bringup for Task A1 (Second_plan.md, Milestone A).
 
 Starts: robot_state_publisher, ros2_control (mock or fairino_hardware),
-joint_state_broadcaster -> fairino5_controller spawner chain, and move_group.
-Optional RViz (rviz:=true; defaults to the value of `sim`).
+joint_state_broadcaster -> fairino5_controller spawner chain, move_group, and
+the A3 planning-scene + TCP-watchdog nodes. Optional RViz (rviz:=true;
+defaults to the value of `sim`). A3 behavior is controlled by
+``config/workspace.yaml`` and ships disabled until measurements are reviewed.
 
 Args:
   sim   -- 'true' (default) => mock_components hardware. 'false' => real FR5
@@ -76,6 +78,20 @@ def _make_nodes(context, *args, **kwargs):
         parameters=[moveit_config.to_dict()],
     )
 
+    # A3 safety nodes are always present so the safety layer cannot be forgotten.
+    # Their checked-in workspace.yaml is disabled, so a fresh checkout publishes
+    # no collision geometry and cancels no goals until measured values are reviewed.
+    workspace_yaml = os.path.join(
+        moveit_config.package_path, 'config', 'workspace.yaml')
+    planning_scene = Node(
+        package='fr5_bringup', executable='a3_planning_scene.py',
+        output='screen', parameters=[{'workspace': workspace_yaml}],
+    )
+    tcp_watchdog = Node(
+        package='fr5_bringup', executable='a3_tcp_watchdog.py',
+        output='screen', parameters=[{'workspace': workspace_yaml}],
+    )
+
     rviz = Node(
         package='rviz2', executable='rviz2', name='rviz2',
         arguments=['-d', os.path.join(moveit_config.package_path, 'config', 'moveit.rviz')],
@@ -89,7 +105,8 @@ def _make_nodes(context, *args, **kwargs):
         condition=IfCondition(LaunchConfiguration('rviz')),
     )
 
-    return [rsp, cm, jsb_spawner, after_jsb, move_group, rviz]
+    return [rsp, cm, jsb_spawner, after_jsb, move_group,
+            planning_scene, tcp_watchdog, rviz]
 
 
 def generate_launch_description():
