@@ -9,6 +9,7 @@ MoveIt, built for the VLA pick pipeline. Created for **Task A1**.
 |---|---|
 | MoveIt planning frame | **`base_link`** (URDF root; verified live via `/compute_fk`) |
 | TCP frame | **`wrist3_link`** = flange. **`tcp_link`** = calibrated fingertip center (A2), offset `[+0.0025, -0.0034, +0.2323]` m from `config/tcp_offset.yaml`; accepted verification tolerance is **6 mm**. |
+| Camera frame | **`zed_left_optical`**; B2 publishes the accepted fixed transform `base_link → zed_left_optical` from `calib/T_base_cam.json`. |
 | Robot | Fairino FR5 (firmware V3.9.x), real controller at `192.168.58.2:8080` on `enP2p1s0` |
 | Planning group | `fairino5_v6_group` (j1–j6), controller `fairino5_controller/follow_joint_trajectory` |
 | Named poses (SRDF) | `standby`, `pos1`, `pos2`, `leftGrab`, `leftLift`, `rightGrab`, `rightLift`, `genRotate`, `transit`, `drop` |
@@ -58,7 +59,10 @@ ros2 launch fr5_bringup a1_bringup.launch.py sim:=false     # rviz:=true optiona
 ```
 
 Bringup = robot_state_publisher + ros2_control (`FairinoHardwareInterface`
-or mock) + joint_state_broadcaster + fairino5_controller + move_group.
+or mock) + joint_state_broadcaster + fairino5_controller + move_group + the
+accepted B2 static camera TF. Before B2 exists, use
+`publish_camera_tf:=false`; after a new B1 capture, refit B2 before restarting
+bringup or its stale-calibration guard will stop the launch.
 
 ## A1 script
 
@@ -112,6 +116,33 @@ The fingertip is TF `base_link → tcp_link` (fixed child of `wrist3_link`,
 offset from `config/tcp_offset.yaml`). Milestone B scripts should read
 `tcp_link`, not `wrist3_link`. Jaw stroke / pad sizes measured in the stroke
 test go in `config/gripper.yaml` for the C2/C3 width checks.
+
+## B1/B2: camera-to-base calibration — complete (2026-07-16)
+
+B1 captured eight well-spread correspondences between ZED points in
+`zed_left_optical` and fingertip touches in `base_link`. B2 fits the no-scale
+rigid transform `p_base = R @ p_camera + t`, reports every residual, and
+refuses to overwrite the accepted transform unless RMS is at most 8 mm and
+the maximum individual residual is at most 15 mm.
+
+The accepted fit in `calib/T_base_cam.json` has **7.532 mm RMS**, **6.542 mm
+mean**, and **12.358 mm maximum** residual. Its source-file SHA-256 is retained
+so bringup detects a B1 capture changed without a corresponding B2 refit.
+
+```bash
+# Refit/report only:
+ros2 run fr5_bringup b2_fit_transform.py
+
+# Refit and atomically replace T_base_cam.json only if quality passes:
+ros2 run fr5_bringup b2_fit_transform.py --write
+
+# Bringup publishes base_link -> zed_left_optical by default. Verify it:
+ros2 run tf2_ros tf2_echo base_link zed_left_optical
+```
+
+Any physical movement of the camera or robot base invalidates this result.
+B3 hover validation is still required before using transformed camera targets
+for close robot motion.
 
 ## A3: taught waypoints (zones removed 2026-07-16)
 

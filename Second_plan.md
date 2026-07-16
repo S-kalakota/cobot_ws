@@ -319,8 +319,8 @@ The single ordered path from today to done. Each step is a task above; don't sta
 1. **A1 — DONE (2026-07-15)** — command the Fairino from code, read TCP back; record frames + ROS/JetPack versions.
 2. **A2 — DONE (2026-07-16)** — gripper I/O and geometry recorded; fingertip TCP calibrated; approximately 6 mm two-orientation disagreement accepted as the project tolerance.
 3. **A3 (zones removed 2026-07-16) — IN PROGRESS** — teach the four joint-space waypoints (`home`, `hover_bin_left`, `hover_bin_right`, `drop`); record table Z and bin extents as plain numbers for the C3 gate. No planning-scene boxes, no watchdog.
-4. **B1** — capture 8–12 touch-point pairs across the workspace, varied heights.
-5. **B2** — solve `T_base←cam`, residuals ≤ 8 mm RMS; save JSON.
+4. **B1 — DONE (2026-07-16)** — captured 8 touch-point pairs across the workspace at varied heights.
+5. **B2 — DONE (2026-07-16)** — solved and saved `T_base←cam`; 7.532 mm RMS, 12.358 mm maximum residual; static TF integrated into bringup.
 6. **B3** — hover validation at 5+ spots, miss ≤ 15 mm.
 7. **B4** — AprilTag drift tripwire at startup.
 8. **C1** — table plane fit + ghost filter.

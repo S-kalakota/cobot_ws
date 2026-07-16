@@ -12,6 +12,7 @@ install(PROGRAMS
   scripts/a2_gripper.py
   scripts/a2_tcp_calibrate.py
   scripts/b1_capture_points.py
+  scripts/b2_fit_transform.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

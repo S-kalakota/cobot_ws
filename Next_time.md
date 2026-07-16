@@ -33,6 +33,19 @@ Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
   `a2_tcp_calibrate.py --samples 6 --write`, large wrist tilts (~40°), a
   bringup restart, and `--verify`.
 
+### Milestone B1/B2 — camera-to-base transform ✅ (2026-07-16)
+- B1 retained 8 well-spread ZED-point ↔ fingertip-touch pairs in
+  `calib/calib_points.json`.
+- B2 Kabsch fit passes: **7.532 mm RMS**, **6.542 mm mean**, **12.358 mm max**.
+- Accepted transform is `calib/T_base_cam.json`; `b2_fit_transform.py --write`
+  refuses failed fits and records per-point residuals plus the source hash.
+- `a1_bringup.launch.py` now publishes `base_link → zed_left_optical` by
+  default and rejects failed or stale calibration files. Restart bringup to
+  load it, then verify with
+  `ros2 run tf2_ros tf2_echo base_link zed_left_optical`.
+- B2 is numerically complete; **B3 physical hover validation is next** before
+  any close approach to a vision target.
+
 ### Infrastructure fixed along the way
 - `~/fairino5` was renamed to `~/fairino_ros_connector`; re-pointed the
   `robot_ws/src/fairino_description` symlink and fixed broken absolute
@@ -83,12 +96,9 @@ and each bin's interior extent for the C3 gate clamps.
 2. **A3 numbers for the gate:** 3 table touches → table Z; jog fingertip to
    each bin's interior walls → bin extents in `base_link`. Plain numbers,
    no scene objects.
-3. **Milestone B — hand-eye calibration (the critical path).** B1 touch-point
-   capture tool (click a pixel in the ZED view ↔ touch the same point with
-   the fingertip; 8–12 pairs at varied heights), B2 solve `T_base←cam`
-   (Umeyama fit, ≤8 mm RMS), B3 hover validation (≤15 mm at 5 spots — this is
-   where a weak TCP would show), B4 AprilTag drift tripwire.
-   After B2, everything downstream of the camera unblocks.
+3. **Milestone B3/B4:** physically validate the accepted B2 transform by
+   hovering 100 mm above at least five camera-selected spots (≤15 mm miss),
+   then add the AprilTag/ChArUco camera-bump tripwire. B1/B2 are complete.
 7. Then Milestone C (table plane, `GraspTarget`, safety gate) per
    `Second_plan.md` step list.
 
