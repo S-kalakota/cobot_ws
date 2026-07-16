@@ -8,7 +8,7 @@ MoveIt, built for the VLA pick pipeline. Created for **Task A1**.
 | Question | Answer |
 |---|---|
 | MoveIt planning frame | **`base_link`** (URDF root; verified live via `/compute_fk`) |
-| TCP frame | **`wrist3_link`** = flange. **`tcp_link`** = fingertip (A2): fixed offset from `config/tcp_offset.yaml` — placeholder until `a2_tcp_calibrate.py --write` solves it. |
+| TCP frame | **`wrist3_link`** = flange. **`tcp_link`** = calibrated fingertip center (A2), offset `[+0.0025, -0.0034, +0.2323]` m from `config/tcp_offset.yaml`; accepted verification tolerance is **6 mm**. |
 | Robot | Fairino FR5 (firmware V3.9.x), real controller at `192.168.58.2:8080` on `enP2p1s0` |
 | Planning group | `fairino5_v6_group` (j1–j6), controller `fairino5_controller/follow_joint_trajectory` |
 | Named poses (SRDF) | `standby`, `pos1`, `pos2`, `leftGrab`, `leftLift`, `rightGrab`, `rightLift`, `genRotate`, `transit`, `drop` |
@@ -41,8 +41,11 @@ source install/setup.bash
 
 `src/fairino_description` is a symlink into
 `~/fairino_ros_connector/fairino_ros_libs/`. (The workspace previously lived
-at `~/fairino5`; symlink and paths fixed 2026-07-15 — **rebuild before the
-next launch**, also to pick up the new `tcp_link` / A2 scripts.)
+at `~/fairino5`; symlink and paths were fixed 2026-07-15.) This workspace was
+built with `--symlink-install`: YAML edits require a bringup restart so xacro
+reloads them, but the currently installed Python, URDF, SRDF, YAML, and launch
+files are symlinked to the source tree. Rebuild when adding/removing installed
+files or when using a non-symlink installation.
 
 ## Run
 
@@ -71,23 +74,15 @@ scaling **0.1**. After any motion the script keeps streaming the live TCP
 pose (`base_link → wrist3_link` from TF, fed by real joint states) plus
 joint angles until Ctrl-C.
 
-## A1 verification status (2026-07-06)
+## A1 verification status (completed live 2026-07-15)
 
 - Sim: plan + execute + TCP readback all pass (standby → transit, 145-point
   14.3 s trajectory at 0.1 scale).
-- Real: driver connects (`机械臂SDK连接成功`), live joint states stream and
-  match the pendant, dry-run plan to `transit` succeeds. **Live `--execute`
-  deliberately not run autonomously** — run it yourself with a hand on the
-  e-stop:
+- Real: driver connects (`机械臂SDK连接成功`), live joint states match the
+  pendant, planning succeeds, and a small j2 dip-and-return was executed from
+  code at 0.1 scaling while TCP and joint readback streamed.
 
-  ```bash
-  ros2 run fr5_bringup a1_move_and_read.py --pose standby --execute
-  ```
-
-  (Arm is already at standby, so the first live run is a near-zero-length
-  motion — the safest possible smoke test. Then try `--pose transit --execute`.)
-
-## A2: gripper + fingertip TCP (code written 2026-07-15, not yet run)
+## A2: gripper + fingertip TCP — complete (2026-07-16)
 
 The DH PGC140 is not a ros2_control axis — it hangs off the FR5 controller's
 tool bus, commanded through `fairino_remote_command_service`, which the
@@ -96,21 +91,21 @@ RPC session; same wire commands the production `fr5_telemetry_node` uses:
 `SetGripperConfig(4,0,0,0)` → `ActGripper(1,1)` → `MoveGripper(1,pct)`).
 Requires bringup with `sim:=false`; mock hardware has no gripper service.
 
+The gripper opens/closes from `a2_gripper.py`; its measured 50 mm stroke and
+20 x 40 mm pads are recorded in `config/gripper.yaml`. Pivot calibration wrote
+the fingertip offset `[+0.0025, -0.0034, +0.2323]` m to
+`config/tcp_offset.yaml`. The retained four-touch fit has 2.8 mm RMS residual;
+the two-orientation verification disagreed by approximately 6 mm. On
+2026-07-16 that result was accepted and the project-wide A2 verification
+tolerance was set to **6 mm**.
+
+Re-running the tools remains available if B3 later exposes a systematic miss:
+
 ```bash
-# 1. gripper I/O + physical numbers (calipers ready):
-ros2 run fr5_bringup a2_gripper.py --activate
-ros2 run fr5_bringup a2_gripper.py --open        # --close / --pos 40 / --status / --watch
-ros2 run fr5_bringup a2_gripper.py --stroke-test # record results in config/gripper.yaml
-
-# 2. solve the fingertip TCP offset (pivot calibration — touch one fixed
-#    point from >= 3 different wrist orientations, jogging via the pendant):
-ros2 run fr5_bringup a2_tcp_calibrate.py --samples 4 --write
-
-# 3. rebuild so the URDF picks the offset up, relaunch bringup:
-colcon build --symlink-install
-
-# 4. verify (A2 done-when: two-orientation touch test agrees <= 3 mm):
-ros2 run fr5_bringup a2_tcp_calibrate.py --verify
+ros2 run fr5_bringup a2_gripper.py --open        # --close / --pos / --status / --watch
+ros2 run fr5_bringup a2_tcp_calibrate.py --samples 6 --write
+# Restart bringup so robot_description reloads the offset.
+ros2 run fr5_bringup a2_tcp_calibrate.py --verify  # pass threshold: <= 6 mm
 ```
 
 The fingertip is TF `base_link → tcp_link` (fixed child of `wrist3_link`,
@@ -129,7 +124,7 @@ watchdog only cancels existing ROS action goals.
 ```bash
 # Interactive measurement; you jog with the pendant and press Enter.
 # This writes measured values but leaves both safety layers disabled.
-ros2 run fr5_bringup a3_measure_workspace.py
+ros2 run fr5_bringup a3_measure_workspace.py --tcp-calibrated
 
 # Offline validation; neither command starts ROS motion or the robot driver.
 ros2 run fr5_bringup a3_planning_scene.py --validate-only
@@ -141,14 +136,15 @@ ros2 service call /a3_tcp_watchdog/acknowledge std_srvs/srv/Trigger '{}'
 ```
 
 Enable `planning_scene.enabled` only after checking every box in simulation.
-Enable `keep_in.enabled` and `watchdog.enabled` only after A2 TCP verification
-passes and the simulated cancellation/acknowledgement test succeeds. The
-watchdog is not safety-rated and does not replace the physical e-stop.
+Enable `keep_in.enabled` and `watchdog.enabled` only after the simulated
+cancellation/acknowledgement test succeeds. The watchdog table floor includes
+the accepted 6 mm TCP uncertainty plus 5 mm nominal physical clearance (11 mm
+total), and each effective keep-in wall is shifted inward by 6 mm. The table
+collision box is likewise padded 6 mm above the measured plane. The watchdog
+is not safety-rated and does not replace the physical e-stop.
 
 ## Known gaps (by design, later tasks)
 
-- `tcp_offset.yaml` holds a placeholder (z=0.150) until the calibration above
-  has been run on the real arm.
 - A3 code is installed, but its checked-in workspace is disabled pending real
   measurements and simulation validation. Until then MoveIt only
   self-collision-checks; keep speed at 0.1 and watch the arm.

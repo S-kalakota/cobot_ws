@@ -47,14 +47,15 @@
         <joint name="j5" value="1.48657"/>
         <joint name="j6" value="0.10943"/>
     </group_state>
-    <!-- leftgrab (teach pendant) — renamed + retaught from leftgrab3 -->
+    <!-- leftgrab (teach pendant) — latest taught start point from
+         db/plans.sqlite:leftgrab_to_leftlift, saved 2026-07-16 -->
     <group_state name="leftGrab" group="fairino5_v6_group">
-        <joint name="j1" value="2.86927"/>
-        <joint name="j2" value="-1.85049"/>
-        <joint name="j3" value="-1.82301"/>
-        <joint name="j4" value="-0.91911"/>
-        <joint name="j5" value="1.45149"/>
-        <joint name="j6" value="0.3302"/>
+        <joint name="j1" value="2.85548"/>
+        <joint name="j2" value="-1.82207"/>
+        <joint name="j3" value="-1.90724"/>
+        <joint name="j4" value="-0.74070"/>
+        <joint name="j5" value="1.48561"/>
+        <joint name="j6" value="0.35261"/>
     </group_state>
     <!-- left-lift (teach pendant) -->
     <group_state name="leftLift" group="fairino5_v6_group">
@@ -65,14 +66,15 @@
         <joint name="j5" value="1.51193"/>
         <joint name="j6" value="0.49175"/>
     </group_state>
-    <!-- rightgrab (teach pendant) — renamed + retaught from rightgrab2 -->
+    <!-- rightgrab (teach pendant) — latest taught start point from
+         db/plans.sqlite:rightgrab_to_rightlift, saved 2026-07-16 -->
     <group_state name="rightGrab" group="fairino5_v6_group">
-        <joint name="j1" value="1.9214"/>
-        <joint name="j2" value="-2.07247"/>
-        <joint name="j3" value="-1.51858"/>
-        <joint name="j4" value="-0.91577"/>
-        <joint name="j5" value="1.67255"/>
-        <joint name="j6" value="-0.51838"/>
+        <joint name="j1" value="1.94643"/>
+        <joint name="j2" value="-2.06572"/>
+        <joint name="j3" value="-1.52301"/>
+        <joint name="j4" value="-0.93272"/>
+        <joint name="j5" value="1.61157"/>
+        <joint name="j6" value="-0.54261"/>
     </group_state>
     <!-- right-lift (teach pendant) -->
     <group_state name="rightLift" group="fairino5_v6_group">
