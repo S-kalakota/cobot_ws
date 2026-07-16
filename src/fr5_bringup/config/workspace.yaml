@@ -17,6 +17,7 @@ metadata:
 measurements:
   table_surface_points: []
   table_plane_z: null
+  table_collision_top_z: null
   keep_in_samples: []
 
 planning_scene:
@@ -48,7 +49,12 @@ watchdog:
   rate_hz: 20.0
   startup_grace_s: 5.0
   tf_stale_timeout_s: 0.5
-  floor_clearance_m: 0.005
+  # A2 accepts up to 6 mm TCP disagreement. Preserve a nominal 5 mm physical
+  # table clearance by placing the watchdog floor 11 mm above the measured
+  # plane. The watchdog also shrinks every keep-in wall inward by 6 mm.
+  tcp_uncertainty_m: 0.006
+  nominal_floor_clearance_m: 0.005
+  floor_clearance_m: 0.011
   boundary_tolerance_m: 0.0
   cancel_repeat_s: 0.10
   cancel_services:

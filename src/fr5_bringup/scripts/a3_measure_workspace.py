@@ -27,6 +27,8 @@ from tf2_ros import Buffer, TransformListener
 
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / 'config' / 'workspace.yaml'
 DEFAULT_OBSTACLES = ('camera_gantry', 'monitor')
+TCP_UNCERTAINTY_M = 0.006
+NOMINAL_FLOOR_CLEARANCE_M = 0.005
 
 
 class MeasurementCancelled(RuntimeError):
@@ -171,13 +173,14 @@ def build_workspace(node, args):
     table_low, table_high = axis_bounds(table_corners)
     table_thickness = ask_float('Table collision-box thickness', 0.050)
     table_pad_xy = args.table_padding
+    table_collision_top_z = table_plane_z + TCP_UNCERTAINTY_M
     table_box = {
         'id': 'table',
         'enabled': True,
         'center': [
             (table_low[0] + table_high[0]) / 2.0,
             (table_low[1] + table_high[1]) / 2.0,
-            table_plane_z - table_thickness / 2.0,
+            table_collision_top_z - table_thickness / 2.0,
         ],
         'size': [
             table_high[0] - table_low[0] + 2.0 * table_pad_xy,
@@ -237,6 +240,7 @@ def build_workspace(node, args):
         'measurements': {
             'table_surface_points': [rounded(point) for point in table_points],
             'table_plane_z': round(table_plane_z, 6),
+            'table_collision_top_z': round(table_collision_top_z, 6),
             'keep_in_samples': [rounded(point) for point in keep_in_samples],
         },
         'planning_scene': {
@@ -260,7 +264,12 @@ def build_workspace(node, args):
             'rate_hz': 20.0,
             'startup_grace_s': 5.0,
             'tf_stale_timeout_s': 0.5,
-            'floor_clearance_m': 0.005,
+            # Keep the physical TCP at least 5 mm above the measured table
+            # even at the accepted 6 mm A2 pose uncertainty.
+            'tcp_uncertainty_m': TCP_UNCERTAINTY_M,
+            'nominal_floor_clearance_m': NOMINAL_FLOOR_CLEARANCE_M,
+            'floor_clearance_m': (
+                TCP_UNCERTAINTY_M + NOMINAL_FLOOR_CLEARANCE_M),
             'boundary_tolerance_m': 0.0,
             'cancel_repeat_s': 0.10,
             'cancel_services': [

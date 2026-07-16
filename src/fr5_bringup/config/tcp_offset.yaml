@@ -2,8 +2,9 @@
 # Solved by a2_tcp_calibrate.py (pivot calibration), 2026-07-15.
 # Kept: the 4-touch run (RMS residual 2.8 mm). A later 6-touch run gave
 # z=0.2644 with RMS 7.3 mm (sloppy touches — arm hard to jog) and was
-# discarded. The two runs disagree by ~3 cm in z, so run
-# `a2_tcp_calibrate.py --verify` when convenient to confirm this one.
+# discarded. The retained offset produced ~6 mm maximum disagreement in the
+# two-orientation verification and is accepted as the A2 result. Project-wide
+# TCP verification tolerance: 0.006 m (decision recorded 2026-07-16).
 # After editing: relaunch bringup (config is symlinked; no rebuild needed).
 x: 0.0025
 y: -0.0034

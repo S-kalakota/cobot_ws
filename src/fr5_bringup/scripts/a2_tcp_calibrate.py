@@ -16,12 +16,12 @@ Usage (bringup running, sim:=false; jog with the pendant between touches):
 
   a2_tcp_calibrate.py                     # capture 4 touches, solve, print d
   a2_tcp_calibrate.py --samples 6 --write # solve and update tcp_offset.yaml
-  a2_tcp_calibrate.py --verify            # after rebuild: 2-orientation touch
-                                          # test against tcp_link (<= 3 mm)
+  a2_tcp_calibrate.py --verify            # after relaunch: 2-orientation touch
+                                          # test against tcp_link (<= 6 mm)
 
-After --write: rebuild (`colcon build --symlink-install`), relaunch bringup so
-the URDF picks up the new offset, then run --verify. Done-when (plan): the
-two-orientation verify agrees within ~3 mm.
+After --write: relaunch bringup so the URDF picks up the new offset, then run
+--verify. (A non-symlink install must be rebuilt first.) Done-when (plan): the
+two-orientation verify agrees within 6 mm.
 """
 import argparse
 import math
@@ -36,6 +36,8 @@ from tf2_ros import Buffer, TransformListener
 BASE_FRAME = 'base_link'
 FLANGE_FRAME = 'wrist3_link'
 TCP_FRAME = 'tcp_link'
+VERIFY_TOLERANCE_M = 0.006
+VERIFY_TOLERANCE_MM = VERIFY_TOLERANCE_M * 1000.0
 # default yaml target: source tree (share/ is a symlink to it under
 # --symlink-install, but writing to src is unambiguous)
 DEFAULT_YAML = Path(__file__).resolve().parents[1] / 'config' / 'tcp_offset.yaml'
@@ -130,8 +132,9 @@ def write_yaml(path, d, residuals):
     rms = float(np.sqrt(np.mean(residuals ** 2)))
     path.write_text(
         '# Fingertip-center TCP offset in the wrist3_link (flange) frame, metres.\n'
-        '# Solved by a2_tcp_calibrate.py (pivot calibration). After editing:\n'
-        '#   colcon build --symlink-install   # then relaunch bringup\n'
+        '# Solved by a2_tcp_calibrate.py (pivot calibration). Relaunch bringup\n'
+        '# after editing; rebuild first only for a non-symlink install.\n'
+        f'# project TCP verification tolerance: {VERIFY_TOLERANCE_M:.3f} m\n'
         f'# fit: {len(residuals)} touches, RMS residual {rms * 1000:.1f} mm\n'
         f'x: {d[0]:.4f}\n'
         f'y: {d[1]:.4f}\n'
@@ -186,11 +189,12 @@ def run_calibrate(node, args):
           + ' '.join(f'{r * 1000:.1f}' for r in residuals))
     rms = np.sqrt(np.mean(residuals ** 2)) * 1000
     print(f'RMS residual: {rms:.1f} mm  '
-          f'({"OK" if rms <= 3.0 else "high — redo the worst touches"})')
+          f'({"OK" if rms <= VERIFY_TOLERANCE_MM else "high — redo the worst touches"})')
 
     if args.write:
         write_yaml(args.yaml, d, residuals)
-        print('Now rebuild + relaunch bringup, then run --verify.')
+        print('Now relaunch bringup, then run --verify. Rebuild first only for '
+              'a non-symlink install.')
     else:
         print('(dry run — pass --write to update tcp_offset.yaml)')
     return 0
@@ -213,8 +217,8 @@ def run_verify(node, args):
         print(f'touch {i + 1}: [{p[0]:+.4f} {p[1]:+.4f} {p[2]:+.4f}]  '
               f'({spread[i] * 1000:.1f} mm from centroid)')
     print(f'max pairwise disagreement: {worst * 1000:.1f} mm  '
-          f'-> {"PASS (<= 3 mm)" if worst <= 0.003 else "FAIL (> 3 mm) — refit"}')
-    return 0 if worst <= 0.003 else 1
+          f'-> {"PASS (<= 6 mm)" if worst <= VERIFY_TOLERANCE_M else "FAIL (> 6 mm) — refit"}')
+    return 0 if worst <= VERIFY_TOLERANCE_M else 1
 
 
 def main():

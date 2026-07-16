@@ -102,8 +102,26 @@ def load_workspace(path):
                       'watchdog.startup_grace_s', minimum=0.0)
         finite_number(watchdog.get('tf_stale_timeout_s'),
                       'watchdog.tf_stale_timeout_s', strictly_positive=True)
-        finite_number(watchdog.get('floor_clearance_m'),
-                      'watchdog.floor_clearance_m', minimum=0.0)
+        tcp_uncertainty = finite_number(
+            watchdog.get('tcp_uncertainty_m'),
+            'watchdog.tcp_uncertainty_m', minimum=0.0)
+        nominal_floor_clearance = finite_number(
+            watchdog.get('nominal_floor_clearance_m'),
+            'watchdog.nominal_floor_clearance_m', minimum=0.0)
+        floor_clearance = finite_number(
+            watchdog.get('floor_clearance_m'),
+            'watchdog.floor_clearance_m', minimum=0.0)
+        required_floor_clearance = tcp_uncertainty + nominal_floor_clearance
+        if floor_clearance + 1e-12 < required_floor_clearance:
+            raise ValueError(
+                'watchdog.floor_clearance_m must be at least '
+                'tcp_uncertainty_m + nominal_floor_clearance_m '
+                f'({required_floor_clearance:.4f} m)')
+        if any(low[index] + tcp_uncertainty >= high[index] - tcp_uncertainty
+               for index in range(3)):
+            raise ValueError(
+                'keep_in bounds must remain non-empty after applying the TCP '
+                'uncertainty inward on every side')
         finite_number(watchdog.get('boundary_tolerance_m'),
                       'watchdog.boundary_tolerance_m', minimum=0.0)
         finite_number(watchdog.get('cancel_repeat_s'),
@@ -152,8 +170,18 @@ class TcpWatchdog(Node):
         self.high = finite_vector(self.workspace['keep_in']['max'], 3, 'keep_in.max')
         table_z = finite_number(
             self.workspace['measurements']['table_plane_z'], 'table_plane_z')
-        self.floor_z = table_z + finite_number(
+        self.tcp_uncertainty = finite_number(
+            self.config['tcp_uncertainty_m'], 'tcp_uncertainty_m', minimum=0.0)
+        self.nominal_floor_clearance = finite_number(
+            self.config['nominal_floor_clearance_m'],
+            'nominal_floor_clearance_m', minimum=0.0)
+        self.floor_clearance = finite_number(
             self.config['floor_clearance_m'], 'floor_clearance_m', minimum=0.0)
+        self.floor_z = table_z + self.floor_clearance
+        self.effective_low = [
+            value + self.tcp_uncertainty for value in self.low]
+        self.effective_high = [
+            value - self.tcp_uncertainty for value in self.high]
         self.tolerance = finite_number(
             self.config['boundary_tolerance_m'], 'boundary_tolerance_m', minimum=0.0)
         self.startup_grace = finite_number(
@@ -174,7 +202,11 @@ class TcpWatchdog(Node):
         self.timer = self.create_timer(1.0 / rate_hz, self._tick)
         self.get_logger().info(
             f'ARMED at {rate_hz:.1f} Hz: {self.frame_id} -> {self.tcp_frame}, '
-            f'keep-in min={self.low}, max={self.high}, floor_z={self.floor_z:.4f}')
+            f'effective keep-in min={self.effective_low}, '
+            f'max={self.effective_high}, floor_z={self.floor_z:.4f} '
+            f'(clearance={self.floor_clearance:.3f} m = '
+            f'{self.tcp_uncertainty:.3f} m TCP uncertainty + '
+            f'{self.nominal_floor_clearance:.3f} m nominal)')
 
     def _read_position(self):
         try:
@@ -189,12 +221,14 @@ class TcpWatchdog(Node):
         axis_names = ('x', 'y', 'z')
         reasons = []
         for index, axis in enumerate(axis_names):
-            if position[index] < self.low[index] - self.tolerance:
+            if position[index] < self.effective_low[index] - self.tolerance:
                 reasons.append(
-                    f'{axis}={position[index]:.4f} below {self.low[index]:.4f}')
-            if position[index] > self.high[index] + self.tolerance:
+                    f'{axis}={position[index]:.4f} below '
+                    f'{self.effective_low[index]:.4f}')
+            if position[index] > self.effective_high[index] + self.tolerance:
                 reasons.append(
-                    f'{axis}={position[index]:.4f} above {self.high[index]:.4f}')
+                    f'{axis}={position[index]:.4f} above '
+                    f'{self.effective_high[index]:.4f}')
         if position[2] < self.floor_z - self.tolerance:
             reasons.append(
                 f'z={position[2]:.4f} below table floor {self.floor_z:.4f}')
