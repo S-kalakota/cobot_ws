@@ -45,8 +45,8 @@ Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
   ros2_control (one shared RPC session — same as production).
 - Updated `leftGrab` / `rightGrab` SRDF poses were applied 2026-07-16 from the
   latest taught start points in `db/plans.sqlite` (`leftgrab_to_leftlift` and
-  `rightgrab_to_rightlift`). The SRDF now matches the trajectories that will be
-  sampled for the A3 keep-in envelope.
+  `rightgrab_to_rightlift`). The SRDF now matches the latest taught
+  trajectories.
 
 ### Hard-won gotchas (read before debugging)
 1. **`tcp_offset.yaml` is baked in at LAUNCH time.** Editing it does nothing
@@ -63,39 +63,27 @@ Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
    (11 taught trajectories = the full pick choreography, incl. a fixed drop
    pose — answers Second_plan open question #3).
 
-## Written but not yet run — Milestone A3 (workspace safety)
+## Milestone A3 — zones removed (2026-07-16)
 
-Three scripts exist, are wired into the bringup, and ship **disabled** via
-`config/workspace.yaml` (fail-closed until measured):
-- `a3_measure_workspace.py` — interactive: 3 table touches (surface height),
-  4 corner hovers (extent), 2 opposite-corner hovers per obstacle
-  (gantry/monitor, +5 cm padding), then keep-in samples (visit named poses —
-  can be done in sim). Jog-and-press-Enter, same as calibration; never moves
-  the robot. Run with `--tcp-calibrated` now that the 6 mm A2 result is
-  accepted.
-- `a3_planning_scene.py` — publishes the keep-out boxes into MoveIt.
-- `a3_tcp_watchdog.py` — 20 Hz keep-in guard: breach → cancel all motion
-  goals → latch until `~/acknowledge` service is called. No auto-recovery by
-  design. Refuses to arm with an uncalibrated TCP. Its table-floor offset is
-  11 mm: 6 mm accepted TCP uncertainty + 5 mm nominal physical clearance.
-  It also shrinks every effective keep-in wall inward by 6 mm, while the table
-  collision surface is padded 6 mm above the measured plane.
+The workspace-safety code (`a3_measure_workspace.py`, `a3_planning_scene.py`,
+`a3_tcp_watchdog.py`, `config/workspace.yaml`) was **deleted** on 2026-07-16
+after the scope change: the station is fixed (two pick bins left/right, drop in
+the same region), transit runs only between taught joint-space waypoints, and
+the cage clutter is never approached. Recoverable from git history (`6f65f44`)
+if the layout changes. A3 is now: teach `home`, `hover_bin_left`,
+`hover_bin_right`, `drop` as joint configurations; record table Z (3 touches)
+and each bin's interior extent for the C3 gate clamps.
 
 ## What's next (in order)
 
-1. **A3 measure:** `ros2 run fr5_bringup a3_measure_workspace.py --tcp-calibrated`
-   (~11 arm placements; precision not critical — err on bigger boxes).
-2. **Review in RViz** (`rviz:=true`): enable `planning_scene.enabled` + each
-   box in `workspace.yaml`, restart bringup, eyeball that boxes sit on the
-   real table/gantry/monitor.
-3. **Test keep-out:** a plan crossing the gantry must re-route; a target
-   inside a box must be rejected.
-4. **Test keep-in, in sim** (`sim:=true`): enable `keep_in` + `watchdog`,
-   command a pose outside the box, confirm mid-flight cancel + latch +
-   acknowledge flow.
-5. **Enable for real.** A3 done-when: boxes visible, gantry plans re-route,
-   out-of-bounds motion cancelled <100 ms, nothing moves until acknowledged.
-6. **Milestone B — hand-eye calibration (the critical path).** B1 touch-point
+1. **A3 waypoints:** jog to each station, save joint values for `home`,
+   `hover_bin_left`, `hover_bin_right`, `drop`; replay all four at 0.1 speed.
+   The taught pick choreography in `db/plans.sqlite` (gotcha #5) is a good
+   source for the exact bin/drop poses.
+2. **A3 numbers for the gate:** 3 table touches → table Z; jog fingertip to
+   each bin's interior walls → bin extents in `base_link`. Plain numbers,
+   no scene objects.
+3. **Milestone B — hand-eye calibration (the critical path).** B1 touch-point
    capture tool (click a pixel in the ZED view ↔ touch the same point with
    the fingertip; 8–12 pairs at varied heights), B2 solve `T_base←cam`
    (Umeyama fit, ≤8 mm RMS), B3 hover validation (≤15 mm at 5 spots — this is

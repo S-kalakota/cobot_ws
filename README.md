@@ -113,38 +113,22 @@ offset from `config/tcp_offset.yaml`). Milestone B scripts should read
 `tcp_link`, not `wrist3_link`. Jaw stroke / pad sizes measured in the stroke
 test go in `config/gripper.yaml` for the C2/C3 width checks.
 
-## A3: workspace safety
+## A3: taught waypoints (zones removed 2026-07-16)
 
-A3 adds MoveIt keep-out boxes and a latched TCP keep-in watchdog. The checked-in
-`config/workspace.yaml` is intentionally disabled until the rig is measured and
-the boxes are reviewed in RViz. All three tools are non-driving: the measurement
-tool only reads TF, the scene node only publishes collision geometry, and the
-watchdog only cancels existing ROS action goals.
+The workspace-safety layer (MoveIt keep-out boxes, keep-in TCP watchdog,
+`workspace.yaml`) was removed on 2026-07-16: the station is fixed — two pick
+bins (left/right) and a drop in the same region — so all transit motion runs
+between hardcoded taught **joint-space** waypoints (`home`, `hover_bin_left`,
+`hover_bin_right`, `drop`) and the cage clutter is never approached. The
+deleted `a3_*` scripts are recoverable from git history (commit `6f65f44`).
 
-```bash
-# Interactive measurement; you jog with the pendant and press Enter.
-# This writes measured values but leaves both safety layers disabled.
-ros2 run fr5_bringup a3_measure_workspace.py --tcp-calibrated
-
-# Offline validation; neither command starts ROS motion or the robot driver.
-ros2 run fr5_bringup a3_planning_scene.py --validate-only
-ros2 run fr5_bringup a3_tcp_watchdog.py --validate-only
-
-# After a watchdog breach, inspect the cause and explicitly acknowledge it:
-ros2 service call /a3_tcp_watchdog/status std_srvs/srv/Trigger '{}'
-ros2 service call /a3_tcp_watchdog/acknowledge std_srvs/srv/Trigger '{}'
-```
-
-Enable `planning_scene.enabled` only after checking every box in simulation.
-Enable `keep_in.enabled` and `watchdog.enabled` only after the simulated
-cancellation/acknowledgement test succeeds. The watchdog table floor includes
-the accepted 6 mm TCP uncertainty plus 5 mm nominal physical clearance (11 mm
-total), and each effective keep-in wall is shifted inward by 6 mm. The table
-collision box is likewise padded 6 mm above the measured plane. The watchdog
-is not safety-rated and does not replace the physical e-stop.
+What replaces zones: the C3 safety gate clamps the vision-derived grasp Z to
+the measured table height and requires the target inside the active bin's
+recorded extent. Those are plain numbers measured by jogging the fingertip
+(table: 3 touches; bins: interior walls), not scene objects.
 
 ## Known gaps (by design, later tasks)
 
-- A3 code is installed, but its checked-in workspace is disabled pending real
-  measurements and simulation validation. Until then MoveIt only
-  self-collision-checks; keep speed at 0.1 and watch the arm.
+- There is no collision scene and no runtime keep-in guard: MoveIt only
+  self-collision-checks. Mitigations are procedural — joint-space waypoints
+  only, speed at 0.1 for live runs, dry-run default, hand on the e-stop.
