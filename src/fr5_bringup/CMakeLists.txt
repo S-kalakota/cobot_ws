@@ -11,6 +11,7 @@ install(PROGRAMS
   scripts/a1_move_and_read.py
   scripts/a2_gripper.py
   scripts/a2_tcp_calibrate.py
+  scripts/b1_capture_points.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
