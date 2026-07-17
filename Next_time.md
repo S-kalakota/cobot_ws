@@ -1,6 +1,6 @@
 # Next time — where we are and what's next
 
-Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
+Session notes, updated 2026-07-17. Continues `Second_plan.md`. All robot code lives in
 `~/VLA_Model_Work/robot_ws` (package `fr5_bringup`), pushed to
 `github.com/S-kalakota/cobot_ws` (the current canonical remote; the older
 `S-kalakota/robot_ws` repository contains the same pre-update tree).
@@ -81,31 +81,44 @@ Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
    (11 taught trajectories = the full pick choreography, incl. a fixed drop
    pose — answers Second_plan open question #3).
 
-## Milestone A3 — zones removed (2026-07-16)
+## Milestone A3 — taught positions ✅ (confirmed complete 2026-07-17)
 
-The workspace-safety code (`a3_measure_workspace.py`, `a3_planning_scene.py`,
-`a3_tcp_watchdog.py`, `config/workspace.yaml`) was **deleted** on 2026-07-16
-after the scope change: the station is fixed (two pick bins left/right, drop in
-the same region), transit runs only between taught joint-space waypoints, and
-the cage clutter is never approached. Recoverable from git history (`6f65f44`)
-if the layout changes. A3 is now: teach `home`, `hover_bin_left`,
-`hover_bin_right`, `drop` as joint configurations; record table Z (3 touches)
-and each bin's interior extent for the C3 gate clamps.
+- The required fixed-station positions are already known; no additional
+  position-finding or teaching work is needed. The `home`, `hover_bin_left`,
+  `hover_bin_right`, and `drop` waypoints, plus the table/bin positions needed
+  later by the C3 gate, are accepted as complete for the current layout.
+- The workspace-safety code (`a3_measure_workspace.py`,
+  `a3_planning_scene.py`, `a3_tcp_watchdog.py`, `config/workspace.yaml`) remains
+  intentionally deleted after the 2026-07-16 scope change. It is recoverable
+  from git history (`6f65f44`) if the layout changes.
+- Transit remains limited to the known taught joint-space waypoints. A3 is
+  complete and is no longer a prerequisite for B3.
 
 ## What's next (in order)
 
-1. **A3 waypoints:** jog to each station, save joint values for `home`,
-   `hover_bin_left`, `hover_bin_right`, `drop`; replay all four at 0.1 speed.
-   The taught pick choreography in `db/plans.sqlite` (gotcha #5) is a good
-   source for the exact bin/drop poses.
-2. **A3 numbers for the gate:** 3 table touches → table Z; jog fingertip to
-   each bin's interior walls → bin extents in `base_link`. Plain numbers,
-   no scene objects.
-3. **Milestone B3/B4:** physically validate the accepted B2 transform by
-   hovering 100 mm above at least five camera-selected spots (≤15 mm miss),
-   then add the AprilTag/ChArUco camera-bump tripwire. B1/B2 are complete.
-7. Then Milestone C (table plane, `GraspTarget`, safety gate) per
-   `Second_plan.md` step list.
+1. **Milestone B3 — physical hover validation (next):** validate the accepted
+   B2 transform at **at least five new, well-spread marked points** on the
+   table. Keep the arm out of the ZED view while selecting each point and make
+   sure no other process owns the camera. Run:
+
+   ```bash
+   ros2 run fr5_bringup b3_pick_point.py
+   ros2 run fr5_bringup b3_hover.py --target-file=/tmp/fr5_b3_target.json
+   ros2 run fr5_bringup b3_hover.py --target-file=/tmp/fr5_b3_target.json --execute
+   ```
+
+   The second command is plan-only. Use `--execute` only after the plan and
+   physical path are clear, the TCP is safely above the surface, and a hand is
+   on the e-stop. Execution is capped at 5% speed and targets a TCP hover
+   100 mm above the selected surface point. Measure and record the signed X/Y
+   miss with a ruler after every execution. B3 passes only if every point is
+   within **15 mm**. A roughly constant miss suggests a TCP/frame offset; miss
+   that grows near an edge means calibration coverage is weak there, so add
+   points in that region and refit B2.
+2. **Milestone B4:** add the AprilTag/ChArUco camera-bump tripwire after B3
+   passes.
+3. **Milestone C:** table plane, `GraspTarget`, and the safety gate, following
+   the ordered steps in `Second_plan.md`.
 
 ## Also parked
 - `mask_service.py` (711-line resident masking daemon, Daemon plan) is
