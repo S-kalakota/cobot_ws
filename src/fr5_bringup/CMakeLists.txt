@@ -13,6 +13,8 @@ install(PROGRAMS
   scripts/a2_tcp_calibrate.py
   scripts/b1_capture_points.py
   scripts/b2_fit_transform.py
+  scripts/b3_pick_point.py
+  scripts/b3_hover.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

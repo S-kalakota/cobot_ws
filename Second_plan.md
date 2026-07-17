@@ -321,7 +321,7 @@ The single ordered path from today to done. Each step is a task above; don't sta
 3. **A3 (zones removed 2026-07-16) — IN PROGRESS** — teach the four joint-space waypoints (`home`, `hover_bin_left`, `hover_bin_right`, `drop`); record table Z and bin extents as plain numbers for the C3 gate. No planning-scene boxes, no watchdog.
 4. **B1 — DONE (2026-07-16)** — captured 8 touch-point pairs across the workspace at varied heights.
 5. **B2 — DONE (2026-07-16)** — solved and saved `T_base←cam`; 7.532 mm RMS, 12.358 mm maximum residual; static TF integrated into bringup.
-6. **B3** — hover validation at 5+ spots, miss ≤ 15 mm.
+6. **B3 — IN PROGRESS (tooling ready 2026-07-16)** — separated click/plan/execute scripts enforce a 100 mm, ≤5%-speed TCP hover; physical validation at 5+ new spots, miss ≤ 15 mm, remains.
 7. **B4** — AprilTag drift tripwire at startup.
 8. **C1** — table plane fit + ghost filter.
 9. **C2** — geometric grasp + the `GraspTarget` interface.

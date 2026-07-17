@@ -144,6 +144,49 @@ Any physical movement of the camera or robot base invalidates this result.
 B3 hover validation is still required before using transformed camera targets
 for close robot motion.
 
+## B3: separated click → plan → slow hover workflow
+
+B3 is intentionally split so a camera click cannot move the arm. The picker
+opens the ZED, rejects noisy depth/points outside the calibrated envelope,
+prints the surface coordinate in `base_link`, and saves the latest selection
+to `/tmp/fr5_b3_target.json`:
+
+```bash
+# No robot-motion interface exists in this process:
+ros2 run fr5_bringup b3_pick_point.py
+```
+
+Click a new marked point on a flat surface, inspect the locked coordinate, and
+press Space. The picker prints the exact next commands. Run the first one to
+plan only:
+
+```bash
+# PLAN ONLY — cannot move the robot:
+ros2 run fr5_bringup b3_hover.py --target-file=/tmp/fr5_b3_target.json
+```
+
+Only after the plan succeeds, the arm/path are physically clear, and a hand is
+on the e-stop, repeat with the explicit execution flag:
+
+```bash
+# MOVES THE ROBOT to a 100 mm TCP hover at no more than 5% scaling:
+ros2 run fr5_bringup b3_hover.py \
+  --target-file=/tmp/fr5_b3_target.json --execute
+```
+
+The hover tool independently checks the B1 hash, accepted B2 quality, live
+static camera TF, calibrated workspace envelope, current TCP clearance, and
+tool-down orientation. It chooses the nearer of the taught `leftLift` and
+`rightLift` orientations and converts the desired `tcp_link` hover into the
+correct `wrist3_link` pose for the MoveIt kinematics chain. MoveIt has no
+environment collision scene, so a successful plan does not replace physically
+clearing and inspecting the path.
+
+Repeat using at least five **new** points spread across the workspace. Record
+signed X/Y miss at each location; B3 passes only when every physical miss is
+at most 15 mm. `--target=x,y,z` is also supported, but those coordinates are
+the surface point—the script adds the 100 mm hover itself.
+
 ## A3: taught waypoints (zones removed 2026-07-16)
 
 The workspace-safety layer (MoveIt keep-out boxes, keep-in TCP watchdog,

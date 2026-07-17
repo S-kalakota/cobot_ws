@@ -45,6 +45,11 @@ Session notes, 2026-07-15. Continues `Second_plan.md`. All robot code lives in
   `ros2 run tf2_ros tf2_echo base_link zed_left_optical`.
 - B2 is numerically complete; **B3 physical hover validation is next** before
   any close approach to a vision target.
+- B3 tooling is installed as a deliberately separated workflow:
+  `b3_pick_point.py` has no motion interface and prints/saves a base-frame
+  surface target; `b3_hover.py` plans by default and requires `--execute` for
+  a 100 mm hover capped at 5% speed. Physical testing at five new points is
+  still pending.
 
 ### Infrastructure fixed along the way
 - `~/fairino5` was renamed to `~/fairino_ros_connector`; re-pointed the
