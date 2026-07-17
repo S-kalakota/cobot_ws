@@ -43,13 +43,21 @@ Session notes, updated 2026-07-17. Continues `Second_plan.md`. All robot code li
   default and rejects failed or stale calibration files. Restart bringup to
   load it, then verify with
   `ros2 run tf2_ros tf2_echo base_link zed_left_optical`.
-- B2 is numerically complete; **B3 physical hover validation is next** before
-  any close approach to a vision target.
-- B3 tooling is installed as a deliberately separated workflow:
-  `b3_pick_point.py` has no motion interface and prints/saves a base-frame
-  surface target; `b3_hover.py` plans by default and requires `--execute` for
-  a 100 mm hover capped at 5% speed. Physical testing at five new points is
-  still pending.
+
+### Milestone B3 — physical hover validation ✅ (2026-07-17)
+- Five camera-selected points were tested across the bin pick area using the
+  separated `b3_pick_point.py` → plan-only → `b3_hover.py --execute` workflow.
+- The X/Y alignment was visually accurate at all five points and accepted
+  within B3's 15 mm tolerance. Execution remained capped at 5% speed.
+- The apparent 14–16 cm clearance was not a transform error: the commanded
+  hover was 100 mm at the calibrated TCP, while the physical gripper reference
+  used for the ruler measurement is about 50 mm away from that TCP reference.
+- B3 is complete. The accepted B2 transform is physically validated for the
+  current fixed camera/base installation.
+- The proposed camera-drift tag check was removed on 2026-07-17. The camera is
+  permanently bolted and zip-tied above the cobot. Any impact, maintenance,
+  loosening, or repositioning of the camera or robot base requires repeating
+  B1–B3 before vision-guided motion resumes.
 
 ### Infrastructure fixed along the way
 - `~/fairino5` was renamed to `~/fairino_ros_connector`; re-pointed the
@@ -92,33 +100,14 @@ Session notes, updated 2026-07-17. Continues `Second_plan.md`. All robot code li
   intentionally deleted after the 2026-07-16 scope change. It is recoverable
   from git history (`6f65f44`) if the layout changes.
 - Transit remains limited to the known taught joint-space waypoints. A3 is
-  complete and is no longer a prerequisite for B3.
+  complete.
 
 ## What's next (in order)
 
-1. **Milestone B3 — physical hover validation (next):** validate the accepted
-   B2 transform at **at least five new, well-spread marked points** on the
-   table. Keep the arm out of the ZED view while selecting each point and make
-   sure no other process owns the camera. Run:
-
-   ```bash
-   ros2 run fr5_bringup b3_pick_point.py
-   ros2 run fr5_bringup b3_hover.py --target-file=/tmp/fr5_b3_target.json
-   ros2 run fr5_bringup b3_hover.py --target-file=/tmp/fr5_b3_target.json --execute
-   ```
-
-   The second command is plan-only. Use `--execute` only after the plan and
-   physical path are clear, the TCP is safely above the surface, and a hand is
-   on the e-stop. Execution is capped at 5% speed and targets a TCP hover
-   100 mm above the selected surface point. Measure and record the signed X/Y
-   miss with a ruler after every execution. B3 passes only if every point is
-   within **15 mm**. A roughly constant miss suggests a TCP/frame offset; miss
-   that grows near an edge means calibration coverage is weak there, so add
-   points in that region and refit B2.
-2. **Milestone B4:** add the AprilTag/ChArUco camera-bump tripwire after B3
-   passes.
-3. **Milestone C:** table plane, `GraspTarget`, and the safety gate, following
-   the ordered steps in `Second_plan.md`.
+1. **Milestone C1 (next):** characterize the bin support/floor geometry and
+   reject depth measurements that cannot represent a valid object in a bin.
+2. **Milestones C2/C3:** produce a geometric `GraspTarget`, then pass it through
+   the source-independent safety gate, following `Second_plan.md`.
 
 ## Also parked
 - `mask_service.py` (711-line resident masking daemon, Daemon plan) is

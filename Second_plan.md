@@ -87,7 +87,11 @@ Measured clamp geometry:
 
 **Done when:** the two-orientation touch test agrees ≤ 6 mm, and gripper open/close works from a script. **Passed.**
 
-## Task A3: taught waypoints (zones removed 2026-07-16)
+## Task A3: taught waypoints (zones removed 2026-07-16) — DONE (confirmed 2026-07-17)
+
+**Status:** Complete by operator confirmation. The required fixed-station
+positions are already known and accepted for the current layout; no additional
+position-finding or teaching work is required.
 
 **Scope change (2026-07-16, final):** the station layout is fixed — the arm picks from one of **two bins (left / right)** and drops in the **same region**. All transit motion runs between hardcoded taught waypoints; vision only fine-positions the grasp inside a bin. Decision: **no planning-scene collision boxes and no keep-in watchdog.** The `a3_*` scripts and `workspace.yaml` were deleted from the repo on 2026-07-16 (recoverable from git history, commit `6f65f44`, if the layout ever changes back). Safety for live runs = taught joint-space waypoints + 10 % speed + dry-run default + hand on the e-stop.
 
@@ -100,7 +104,8 @@ Two notes carried forward into other tasks (numbers in code, not zones):
 - Touch the table at 3 spread-out spots; record the averaged Z (with the 6 mm TCP tolerance in mind) for the C3 floor clamp.
 - Record each bin's interior extent in base frame (jog fingertip to the bin walls) — these numbers become the C3 "target inside active bin" check.
 
-**Done when:** the four taught waypoints replay reliably at 10 % speed on the real arm, and the table Z + bin extents are recorded for C3.
+**Done when:** the required taught positions and gate coordinates are known for
+the fixed station. **Passed by operator confirmation.**
 
 ---
 
@@ -135,18 +140,28 @@ def fit_rigid_transform(cam_pts, base_pts):        # Nx3, Nx3
 
 **Done when:** RMS residual ≤ ~8 mm and no single point is a wild outlier (an outlier means a bad touch — redo that point).
 
-## Task B3: hover validation
+## Task B3: hover validation — DONE (2026-07-17)
+
+**Status:** Complete. Five camera-selected points across the bin pick area were
+validated with the separated click, plan, and 5%-speed execute workflow. X/Y
+alignment was accurate at all five points and accepted within the 15 mm
+tolerance. The apparent 14–16 cm physical gap was traced to measuring from a
+gripper reference about 50 mm away from the calibrated TCP; the commanded TCP
+hover remained 100 mm.
+
 **Do:**
-- Pipeline reports a box in base frame → command MoveIt to hover the TCP 100 mm directly above it → measure the horizontal miss with a ruler. Repeat at ≥ 5 spots spread over the table.
+- Pipeline reports a point in base frame → command MoveIt to hover the TCP
+  100 mm directly above it → measure the horizontal miss. Repeat at ≥ 5 spots
+  spread across the reachable bin pick area.
 - Interpret: constant offset everywhere = TCP or frame mistake; error growing toward the edges = poor calibration spread → add points there and refit.
 
-**Done when:** miss ≤ ~15 mm at every test spot.
+**Done when:** miss ≤ ~15 mm at every test spot. **Passed.**
 
-## Task B4: drift tripwire
-**Do:**
-- Glue an AprilTag/ChArUco tag to a table corner. At pipeline startup, detect it and compare its camera-frame pose to the pose recorded at calibration time; warn loudly if translation moved beyond **6 mm** or rotation moved beyond the chosen angular threshold (camera got bumped → recalibrate).
-
-**Done when:** nudging the camera mount on purpose triggers the warning.
+**Drift-tripwire task removed (2026-07-17):** the camera is permanently
+bolted and zip-tied to the fixed station above the cobot, so no AprilTag or
+ChArUco startup check will be added. Any impact, maintenance, loosening, or
+physical repositioning of the camera or robot base invalidates
+`T_base_cam.json`; repeat B1–B3 before enabling vision-guided motion again.
 
 ---
 
@@ -180,11 +195,13 @@ class GraspTarget:
 
 ## Task C3: safety gate (code, not vibes)
 **Do:**
-- Refuse to produce a target unless ALL pass: inside the **active bin's box** (base frame — this replaces the generic workspace-AABB check now that picks come from two fixed bins), reachable, `valid_fraction ≥ 0.8`, `p90 − p10` spread below threshold, consistent with table plane, drift tripwire (B4) quiet, `width ≤` gripper max stroke.
+- Refuse to produce a target unless ALL pass: inside the **active bin's box** (base frame — this replaces the generic workspace-AABB check now that picks come from two fixed bins), reachable, `valid_fraction ≥ 0.8`, `p90 − p10` spread below threshold, consistent with table plane, `width ≤` gripper max stroke.
 - Wire it as one function `gate(target: GraspTarget, evidence) -> (ok, reasons)`; the executive refuses to move on any failure. The `VLA_project/src/co_bot_vlm/safety.py` scaffold is a sensible home for this logic.
 - The gate is grasp-source-agnostic — FoundationPose and grasp-net targets pass through the **same** checks later.
 
-**Done when:** deliberately bad inputs (object off-table, occluded mask, tag moved, box wider than the gripper) are each refused with a readable reason.
+**Done when:** deliberately bad inputs (target outside the active bin,
+occluded mask, inconsistent support-plane depth, box wider than the gripper)
+are each refused with a readable reason.
 
 ## Task C4: MoveIt planning scene — REMOVED (2026-07-16)
 Zones were removed with the A3 scope change: no collision boxes, no keep-in watchdog. With an empty scene there is nothing for carry motions to plan around, so attached-object handling is dropped too. What survives from this task: **keep speed scaling ~10 % for all first live runs**, and transit between taught joint-space waypoints only (no free-space pose goals across the cage).
@@ -318,29 +335,29 @@ The single ordered path from today to done. Each step is a task above; don't sta
 
 1. **A1 — DONE (2026-07-15)** — command the Fairino from code, read TCP back; record frames + ROS/JetPack versions.
 2. **A2 — DONE (2026-07-16)** — gripper I/O and geometry recorded; fingertip TCP calibrated; approximately 6 mm two-orientation disagreement accepted as the project tolerance.
-3. **A3 (zones removed 2026-07-16) — IN PROGRESS** — teach the four joint-space waypoints (`home`, `hover_bin_left`, `hover_bin_right`, `drop`); record table Z and bin extents as plain numbers for the C3 gate. No planning-scene boxes, no watchdog.
+3. **A3 — DONE (confirmed 2026-07-17)** — required fixed-station waypoint and gate positions are already known; no additional position teaching is needed. No planning-scene boxes or watchdog.
 4. **B1 — DONE (2026-07-16)** — captured 8 touch-point pairs across the workspace at varied heights.
 5. **B2 — DONE (2026-07-16)** — solved and saved `T_base←cam`; 7.532 mm RMS, 12.358 mm maximum residual; static TF integrated into bringup.
-6. **B3 — IN PROGRESS (tooling ready 2026-07-16)** — separated click/plan/execute scripts enforce a 100 mm, ≤5%-speed TCP hover; physical validation at 5+ new spots, miss ≤ 15 mm, remains.
-7. **B4** — AprilTag drift tripwire at startup.
-8. **C1** — table plane fit + ghost filter.
-9. **C2** — geometric grasp + the `GraspTarget` interface.
-10. **C3** — safety gate as one function with readable refusals.
-11. **C4** — removed (no zones); 10 % speed rule and waypoint-only transit carry into D1/D2.
-12. **D1** — hover-only executive, dry-run default, 10/10.
-13. *(parallel with 14–15, software-only)* **E1** deterministic spatial selection + **E2** Qwen 7B upgrade.
-14. **D2** — full pick-and-place, ≥ 8/10.
-15. **D3** — failure handling; yank-the-box test passes.
-16. **E3** — one-command demo loop. **← core project complete.**
-17. **F1–F5** — FoundationPose: install → ROS bridge → mesh registry → validate vs baseline → 6-DoF grasp provider; tilted-box pick passes. **← requested stack integrated, project finished.**
-18. **G1–G2** — *only if* the no-mesh-object trigger fires; otherwise explicitly closed as "not required".
+6. **B3 — DONE (2026-07-17)** — five camera-selected bin points validated with the separated 100 mm, ≤5%-speed hover workflow; X/Y accuracy accepted within the 15 mm tolerance.
+7. **C1 — NEXT** — table/support-plane fit + ghost filter.
+8. **C2** — geometric grasp + the `GraspTarget` interface.
+9. **C3** — safety gate as one function with readable refusals.
+10. **C4** — removed (no zones); 10 % speed rule and waypoint-only transit carry into D1/D2.
+11. **D1** — hover-only executive, dry-run default, 10/10.
+12. *(parallel with 13–14, software-only)* **E1** deterministic spatial selection + **E2** Qwen 7B upgrade.
+13. **D2** — full pick-and-place, ≥ 8/10.
+14. **D3** — failure handling; yank-the-box test passes.
+15. **E3** — one-command demo loop. **← core project complete.**
+16. **F1–F5** — FoundationPose: install → ROS bridge → mesh registry → validate vs baseline → 6-DoF grasp provider; tilted-box pick passes. **← requested stack integrated, project finished.**
+17. **G1–G2** — *only if* the no-mesh-object trigger fires; otherwise explicitly closed as "not required".
 
-The single highest-value day of work is still **Milestone B** — everything after it is unblocked the moment `T_base_cam.json` exists and the hover test passes.
+The accepted `T_base_cam.json` is physically validated by B3, so Milestone B
+is complete. **C1 is next.**
 
 # Definition of done
 
-- **Core (step 16):** a naive visitor types requests; the correct box is picked and placed ≥ 8/10 with zero operator help; every unsafe/ambiguous request is *refused with a printed reason* rather than attempted; spatial superlatives resolve deterministically.
-- **Finished with requested stack (step 17):** everything above, plus FoundationPose poses flowing through the same gate and executive, demonstrated by a successful pick of a ~20°-tilted box; MoveIt planning throughout; grasp sources swappable by flag.
+- **Core (step 15):** a naive visitor types requests; the correct box is picked and placed ≥ 8/10 with zero operator help; every unsafe/ambiguous request is *refused with a printed reason* rather than attempted; spatial superlatives resolve deterministically.
+- **Finished with requested stack (step 16):** everything above, plus FoundationPose poses flowing through the same gate and executive, demonstrated by a successful pick of a ~20°-tilted box; MoveIt planning throughout; grasp sources swappable by flag.
 - **Milestone G:** delivered *or* consciously closed with the trigger documented as never having fired. Both count as finished.
 
 # Open questions (answer these early, they shape A/B/F)
@@ -348,13 +365,16 @@ The single highest-value day of work is still **Milestone B** — everything aft
 1. Which Fairino model (FR3/FR5/…), and which ROS 2 distro is its driver running on? Same machine as the ZED/SAM stack (the Thor) or a separate PC?
 2. **Answered:** DH PGC140, commanded through the Fairino remote-command service (`SetGripperConfig` / `ActGripper` / `MoveGripper`); 50 mm usable jaw stroke, 0 mm closed gap, and 20 × 40 mm finger pads. Any grasped box dimension between the pads must be < 50 mm with practical clearance.
 3. **Answered (2026-07-16):** drop zone is fixed, in the same region as the two pick bins; taught as the `drop` joint-space waypoint in A3.
-4. Is the camera mount final? Every physical change to it invalidates Milestone B (the B4 tripwire catches this, but recalibration still costs an hour).
+4. **Answered (2026-07-17):** the camera mount is final, bolted and zip-tied
+   above the cobot. Any physical change to the camera or robot base invalidates
+   Milestone B and requires repeating B1–B3.
 5. Which JetPack is the Thor on, and which Isaac ROS release supports it? (Decides F1 versions.)
 6. If G triggers: who signs off the grasp-net license for company use?
 
 # Risks → mitigations
 
-- **Camera bump silently ruins calibration** → B4 tag tripwire at every startup.
+- **Camera/base mount is altered after calibration** → treat
+  `T_base_cam.json` as invalid and repeat B1–B3 before vision-guided motion.
 - **Depth degrades with distance²** → keep pickable workspace under ~2 m from the lens; gate on `valid_fraction` and spread.
 - **MLLM misselects the object** → E1 makes spatial selection deterministic code.
 - **First live motion hits something** → joint-space taught waypoints only, 10 % speed, dry-run default, hand on the e-stop (accepted 2026-07-16: no collision scene, no watchdog).
